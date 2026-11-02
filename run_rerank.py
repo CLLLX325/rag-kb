@@ -49,8 +49,8 @@ def main():
     table = []
     for size in config.CHUNK_SIZES:
         chunks = data.chunk_documents(docs, size)
-        vectors = embedder.embed_texts([c["text"] for c in chunks])
-        base = VectorRetriever(chunks, vectors)
+        # VectorRetriever 自己会调 embedder 建矩阵，这里只要把 embedder 传进去
+        base = VectorRetriever(chunks, embedder)
         combined = RerankRetriever(base, reranker, chunks)
 
         t0 = time.perf_counter()

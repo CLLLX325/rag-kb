@@ -23,7 +23,8 @@ import os
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-MODEL_DIR = r"C:\deepwork\models\bge-reranker-v2-m3"
+MODEL_DIR = os.environ.get("RERANK_MODEL") or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "models", "bge-reranker-v2-m3")
 
 
 class BgeReranker:
@@ -32,8 +33,14 @@ class BgeReranker:
     def __init__(self, model_dir=MODEL_DIR, max_length=512, batch_size=8, device=None):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
-        self.model = AutoModelForSequenceClassification.from_pretrained(
-            model_dir, torch_dtype=torch.float16 if self.device == "cuda" else torch.float32)
+        # transformers 5.x 把 torch_dtype 改名成 dtype，旧版本还不认 dtype，
+        # 所以两个都试一次
+        dtype = torch.float16 if self.device == "cuda" else torch.float32
+        try:
+            self.model = AutoModelForSequenceClassification.from_pretrained(model_dir, dtype=dtype)
+        except TypeError:
+            self.model = AutoModelForSequenceClassification.from_pretrained(
+                model_dir, torch_dtype=dtype)
         self.model.to(self.device).eval()
         self.max_length = max_length
         self.batch_size = batch_size
